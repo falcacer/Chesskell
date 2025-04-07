@@ -1,52 +1,37 @@
 module PrettyPrint where
 
 import Common
-import Data.Map (Map)
-import qualified Data.Map as Map
+import Utils
+import Data.List (find)
 
--- Unicode characters for chess pieces
 pieceToUnicode :: Piece -> String
-pieceToUnicode (MkPiece pieceName color _) =
-    let symbol = case pieceName of
-            King   -> if color == White then "♔" else "♚"
-            Queen  -> if color == White then "♕" else "♛"
-            Rook   -> if color == White then "♖" else "♜"
-            Bishop -> if color == White then "♗" else "♝"
-            Knight -> if color == White then "♘" else "♞"
-            Pawn   -> if color == White then "♙" else "♟"
-    in symbol
+pieceToUnicode piece = extractChessPiece piece toUnicode
 
--- Pretty-print the current board state
 printBoard :: GameState -> String
 printBoard state = unlines (
-    -- Column markers (a-h)
     "    a b c d e f g h    " :
-    -- Top border
     "  +-----------------+  " :
-    -- Board rows (8 to 1) with pieces
     [printRow r (board state) | r <- [8,7..1]] ++
-    -- Bottom border
     ["  +-----------------+  ",
-     -- Column markers (repeated at bottom)
      "    a b c d e f g h    "])
 
--- Print a single row of the board
-printRow :: Int -> Map Position Piece -> String
-printRow r board =
-    -- Row number on the left
+printRow :: Int -> [Piece] -> String
+printRow r pieces =
     show r ++ " | " ++
-    -- Pieces in this row
-    concat [printSquare (Pos c r) board ++ " " | c <- ['a'..'h']] ++
-    -- Row number on the right
+    concat [printSquare (Pos c r) pieces ++ " " | c <- ['a'..'h']] ++
     "| " ++ show r
 
--- Print a single square of the board
-printSquare :: Position -> Map Position Piece -> String
-printSquare pos board = case Map.lookup pos board of
-    Nothing     -> "."  -- Empty square
-    Just piece  -> pieceToUnicode piece
+printSquare :: Position -> [Piece] -> String
+printSquare pos pieces = 
+    case getPieceAtPosition pos pieces of
+        Nothing -> "."
+        Just piece -> pieceToUnicode piece
 
--- Display the current game state
+-- Find piece at position using the extractChessPiece function
+getPieceAtPosition :: Position -> [Piece] -> Maybe Piece
+getPieceAtPosition targetPos pieces = 
+    find (\piece -> extractChessPiece piece (\p -> piecePosition p) == targetPos) pieces
+
 displayGame :: GameState -> String
 displayGame state =
     "\nCurrent player: " ++ show (currentPlayer state) ++ "\n" ++
@@ -57,7 +42,6 @@ displayGame state =
         Nothing -> "Game in progress"
         Just result -> "Game over: " ++ show result
 
--- Format captured pieces for display
 printCapturedPieces :: [Piece] -> String
 printCapturedPieces [] = "None"
 printCapturedPieces pieces = unwords (map pieceToUnicode pieces)

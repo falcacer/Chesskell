@@ -1,26 +1,66 @@
 module Main where
 
-import Common
-import Eval
-import PrettyPrint
-import Monads
+import           Parse 
+import           Utils                       
+import           Common
+import           Eval
+import           Monads
+import           PrettyPrint
+import           System.Environment (getArgs)
+import           System.IO (readFile)
 
+-------------------------------------------------------------------------------
+
+-- Helper function to display test results
+assertTest :: String -> Bool -> IO ()
+assertTest desc success = putStrLn $ if success then "✓ " ++ desc else "✗ " ++ desc
+
+-- Process moves from a string input
+processMoveString :: String -> IO ()
+processMoveString input = do
+    putStrLn "Processing moves from input"
+    putStrLn $ "Input: " ++ input
+    
+    -- Parse the input string
+    case lexer input of
+        tokens -> case parse tokens of
+            Ok moves -> do
+                putStrLn $ "Parsed " ++ show (length moves) ++ " moves: " ++ show moves
+                
+                -- Evaluate the moves
+                let result = runChess (evalMoves moves) initialGameState
+                
+                case result of
+                    Just (success, finalState) -> do
+                        putStrLn "Initial board:"
+                        putStrLn $ printBoard initialGameState
+                        
+                        assertTest "All moves succeeded" success
+                        
+                        -- Display additional game information
+                        putStrLn $ displayGame finalState
+                        
+                    Nothing -> putStrLn "Move sequence processing failed unexpectedly"
+                    
+            Failed err -> putStrLn $ "Parse error: " ++ err
+
+
+-- Run the program with file input or default test
 main :: IO ()
 main = do
-    let initialState = initialGameState
-    putStrLn "Initial Board:"
-    putStrLn $ displayGame initialState
-
-    -- Example moves
-    let moves = [Move (MkPiece King Black (Info 0 (Pos 'e' 8))) Normal (Pos 'e' 6),
-                 Move (MkPiece King White (Info 0 (Pos 'e' 1))) Normal (Pos 'e' 3)]
-
-    -- Apply moves
-    let game = do
-            mapM_ evalMove moves
-
-    case runGame game of
-        Nothing -> putStrLn "Invalid move sequence!"
-        Just (_, finalState) -> do
-            putStrLn "Final Board:"
-            putStrLn $ displayGame finalState
+    putStrLn "Cheskell - Haskell Chess Engine"
+    putStrLn "=============================="
+    
+    args <- getArgs
+    case args of
+        [filename] -> do
+            putStrLn $ "Reading moves from file: " ++ filename
+            content <- readFile filename
+            processMoveString content
+            
+        [] -> do
+            putStrLn "No input file provided. Using default test."
+            
+        _ -> putStrLn "Usage: cheskell [move_file.txt]"
+    
+    putStrLn "\nProgram completed."

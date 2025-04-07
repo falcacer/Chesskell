@@ -26,7 +26,11 @@ source-repository head
 library
   exposed-modules:
       Common
+      Eval
+      Monads
       Parse
+      PrettyPrint
+      Utils
   other-modules:
       Paths_Chesskell
   autogen-modules:
@@ -39,6 +43,7 @@ library
   build-depends:
       array
     , base >=4.7 && <5
+    , containers
   default-language: Haskell2010
 
 executable Chesskell-exe
@@ -54,6 +59,7 @@ executable Chesskell-exe
       Chesskell
     , array
     , base >=4.7 && <5
+    , containers
   default-language: Haskell2010
 
 test-suite Chesskell-test
@@ -70,4 +76,5 @@ test-suite Chesskell-test
       Chesskell
     , array
     , base >=4.7 && <5
+    , containers
   default-language: Haskell2010

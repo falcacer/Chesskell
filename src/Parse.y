@@ -2,34 +2,42 @@
 module Parse where
 
 import Common
+import Utils
 import Data.Char (isDigit, digitToInt)
 }
-
-%name parseChess
-%tokentype { Token }
+%monad { P } { thenP } { returnP }
+%name parse
 %error { parseError }
+
+%tokentype { Token }
 
 %token
   piece { TPiece $$ }
   col { TCol $$ }
   row { TRow $$ }
   '-' { TDash }
+  '>' { TArrow }
   'x' { TCapture }
   ';' { TSemicolon }
+  EOF { TEOF }
 %%
 
-move_sequence :: { [Move] }
+-- Add a top-level rule to handle the entire input
+game :: { Moves }
+game : move_sequence EOF { $1 }
+
+move_sequence :: { Moves }
 move_sequence : move { [$1] }
               | move ';' move_sequence { $1 : $3 }
 
 move :: { Move }
-move : piece '-' position { 
-          let (pieceName, color) = pieceFromChar $1
-          in Move (MkPiece pieceName color (Info 0 (Pos 'a' 7))) Normal $3 
+move : piece '-' position '>' position {
+          let piece = charToPiece $1 $3
+          in Move piece Normal $5
       }
-     | piece 'x' position { 
-          let (pieceName, color) = pieceFromChar $1
-          in Move (MkPiece pieceName color (Info 0 (Pos 'a' 7))) Capture $3 
+     | piece 'x' position '>' position { 
+          let piece = charToPiece $1 $3
+          in Move piece Capture $5 
       }
 
 position :: { Position }
@@ -37,33 +45,56 @@ position : col row { Pos $1 (digitToInt $2) }
 
 {
 
-parseError :: [Token] -> a
-parseError [] = error "Unexpected end of input"
-parseError (t:_) = error $ "Parse error at token: " ++ show t
+data P a = Ok a | Failed String
+                    deriving Show
+
+thenP :: P a -> (a -> P b) -> P b
+m `thenP` k = case m of
+                Ok a     -> k a
+                Failed e -> Failed e
+
+returnP :: a -> P a
+returnP a = Ok a
+
+failP :: String -> P a
+failP err = Failed err
+
+catchP :: P a -> (String -> P a) -> P a
+catchP m k = case m of
+                        Ok a     -> Ok a
+                        Failed e -> k e
+
+parseError :: [Token] -> P a
+parseError [] = failP "Unexpected end of input"
+parseError (t:ts) = failP $ "Parse error at token: " ++ show t
+
 
 data Token = TPiece Char
            | TCol Char
            | TRow Char
            | TDash
+           | TArrow
            | TCapture
            | TSemicolon
            | TEOF
            deriving (Show)
 
+-- Modify lexer to add an EOF token
 lexer :: String -> [Token]
-lexer [] = []
-lexer ('\n':cs) = lexer cs
-lexer ('\r':cs) = lexer cs
-lexer (' ':cs) = lexer cs
-lexer ('-':cs) = TDash : lexer cs
-lexer ('x':cs) = TCapture : lexer cs
-lexer (';':cs) = TSemicolon : lexer cs
-lexer (c:cs) 
-    | c `elem` ['1'..'8'] = TRow c : lexer cs
-    | c `elem` ['a'..'h'] = TCol c : lexer cs
-    | c `elem` ['K', 'Q', 'R', 'B', 'N', 'P', 'k', 'q', 'r', 'b', 'n', 'p'] = TPiece c : lexer cs
-    | otherwise = error $ "Unexpected character: " ++ [c]
+lexer cs = let tokens = lexer' cs in tokens ++ [TEOF]
+  where
+    lexer' [] = []
+    lexer' ('\n':cs) = lexer' cs
+    lexer' ('\r':cs) = lexer' cs
+    lexer' (' ':cs) = lexer' cs
+    lexer' ('-':cs) = TDash : lexer' cs
+    lexer' ('>':cs) = TArrow : lexer' cs
+    lexer' ('x':cs) = TCapture : lexer' cs
+    lexer' (';':cs) = TSemicolon : lexer' cs
+    lexer' (c:cs)
+        | c `elem` ['1'..'8'] = TRow c : lexer' cs
+        | c `elem` ['a'..'h'] = TCol c : lexer' cs
+        | c `elem` ['K', 'Q', 'R', 'B', 'N', 'P', 'k', 'q', 'r', 'b', 'n', 'p'] = TPiece c : lexer' cs
+        | otherwise = error $ "Unexpected character: " ++ [c]
 
-parser :: String -> Moves
-parser = parseChess . lexer
 }
