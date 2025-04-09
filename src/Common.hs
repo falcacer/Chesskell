@@ -7,20 +7,23 @@ data Position = Pos Char Int deriving (Show, Eq, Ord)
 data Color = White | Black deriving (Show, Eq)
 
 class ChessPiece p where
-    isValidMove :: p -> Position ->  Bool
+    move :: p -> Position ->  Bool
+    capture :: p -> Position -> Bool
     pathIsClear :: p -> Position -> Bool
     toUnicode :: p -> String
     pieceName :: p -> String
     pieceColor :: p -> Color
     piecePosition :: p -> Position
-    updatePosition :: Position -> p -> p
 
 data King = King Color Position deriving (Show, Eq)
 instance ChessPiece King where
-    isValidMove (King _ (Pos c1 r1)) (Pos c2 r2) = let 
-        dx = abs (fromEnum c2 - fromEnum c1)
-        dy = abs (r2 - r1)
+    move (King _ (Pos c1 r1)) (Pos c2 r2) = 
+        let 
+            dx = abs (fromEnum c2 - fromEnum c1)
+            dy = abs (r2 - r1)
         in max dx dy == 1
+    
+    capture = move
     
     pathIsClear _ _ = True
 
@@ -33,15 +36,16 @@ instance ChessPiece King where
 
     piecePosition (King _ pos) = pos
 
-    updatePosition newPos (King color _) = King color newPos
-
 
 data Queen = Queen Color Position deriving (Show, Eq)
 instance ChessPiece Queen where
-    isValidMove (Queen _ (Pos c1 r1)) (Pos c2 r2) = let
-        dx = abs (fromEnum c2 - fromEnum c1)
-        dy = abs (r2 - r1)
+    move (Queen _ (Pos c1 r1)) (Pos c2 r2) = 
+        let
+            dx = abs (fromEnum c2 - fromEnum c1)
+            dy = abs (r2 - r1)
         in dx == dy || dx == 0 || dy == 0
+    
+    capture = move
     
     pathIsClear _ _ =  True
     
@@ -54,16 +58,19 @@ instance ChessPiece Queen where
 
     piecePosition (Queen _ pos) = pos
 
-    updatePosition newPos (Queen color _) = Queen color newPos
 
 data Rook = Rook Color Position deriving (Show, Eq)
 instance ChessPiece Rook where
-    isValidMove (Rook _ (Pos c1 r1)) (Pos c2 r2) = let
-        dx = abs (fromEnum c2 - fromEnum c1)
-        dy = abs (r2 - r1)
+    move (Rook _ (Pos c1 r1)) (Pos c2 r2) = 
+        let
+            dx = abs (fromEnum c2 - fromEnum c1)
+            dy = abs (r2 - r1)
         in dx == 0 || dy == 0
+
+    capture = move
         
     pathIsClear _ _ =  True
+
     toUnicode (Rook Black _) = "♖"
     toUnicode (Rook White _) = "♜"
     
@@ -73,14 +80,15 @@ instance ChessPiece Rook where
 
     piecePosition (Rook _ pos) = pos
 
-    updatePosition newPos (Rook color _) = Rook color newPos
-
 data Bishop = Bishop Color Position deriving (Show, Eq)
 instance ChessPiece Bishop where
-    isValidMove (Bishop _ (Pos c1 r1)) (Pos c2 r2) = let
-        dx = abs (fromEnum c2 - fromEnum c1)
-        dy = abs (r2 - r1)
+    move (Bishop _ (Pos c1 r1)) (Pos c2 r2) = 
+        let
+            dx = abs (fromEnum c2 - fromEnum c1)
+            dy = abs (r2 - r1)
         in dx == dy
+    
+    capture = move
         
     pathIsClear _ _ =  True
     
@@ -93,14 +101,16 @@ instance ChessPiece Bishop where
 
     piecePosition (Bishop _ pos) = pos
 
-    updatePosition newPos (Bishop color _) = Bishop color newPos
 
 data Knight = Knight Color Position deriving (Show, Eq)
 instance ChessPiece Knight where
-    isValidMove (Knight _ (Pos c1 r1)) (Pos c2 r2) =  let
-        dx = abs (fromEnum c2 - fromEnum c1)
-        dy = abs (r2 - r1)
+    move (Knight _ (Pos c1 r1)) (Pos c2 r2) =
+        let
+            dx = abs (fromEnum c2 - fromEnum c1)
+            dy = abs (r2 - r1)
         in (dx == 2 && dy == 1) || (dx == 1 && dy == 2)
+
+    capture = move
     
     pathIsClear _ _ =  True
     
@@ -113,17 +123,24 @@ instance ChessPiece Knight where
 
     piecePosition (Knight _ pos) = pos
 
-    updatePosition newPos (Knight color _) = Knight color newPos
 
 data Pawn = Pawn Color Position deriving (Show, Eq)
 instance ChessPiece Pawn where
-    isValidMove (Pawn color (Pos c1 r1)) (Pos c2 r2) =  let
-        dx = fromEnum c2 - fromEnum c1
-        dy = r2 - r1
+    move (Pawn color (Pos c1 r1)) (Pos c2 r2) =
+        let
+            dx = fromEnum c2 - fromEnum c1
+            dy = r2 - r1
         in if color == White
            then dx == 0 && (dy == 1 || (dy == 2 && r1 == 2))
-           else dx == 0 && (dy == -1 || (dy == 2 && r1 == 7))
-               
+           else dx == 0 && (dy == -1 || (dy == -2 && r1 == 7))
+
+    capture (Pawn color (Pos c1 r1)) (Pos c2 r2) =
+        let
+            dx = abs (fromEnum c2 - fromEnum c1)
+            dy = r2 - r1
+        in if color == White
+           then dx == 1 && dy == 1
+           else dx == 1 && dy == -1
     
     pathIsClear _ _ =  True
         
@@ -136,7 +153,6 @@ instance ChessPiece Pawn where
 
     piecePosition (Pawn _ pos) = pos
 
-    updatePosition newPos (Pawn color _) = Pawn color newPos
 
 data Piece = forall p. (ChessPiece p, Eq p, Show p) => Piece p
 
@@ -144,7 +160,7 @@ instance Eq Piece where
     (Piece p1) == (Piece p2) = show p1 == show p2
 
 instance Show Piece where
-    show (Piece p) = pieceName p ++ " (" ++ show (pieceColor p) ++ ")"
+    show (Piece p) = pieceName p ++ " (" ++ show (pieceColor p) ++ "," ++ show (piecePosition p) ++ ")"
 
 
 data CastleType = KingSide | QueenSide deriving (Show, Eq)
@@ -154,6 +170,7 @@ data PromotionPiece = PromoteToQueen | PromoteToRook | PromoteToBishop | Promote
 
 data MoveType = Normal 
                 | Capture
+                | Promotion PromotionPiece
                 deriving (Show, Eq)
 
 data Move = Move Piece MoveType Position deriving (Show, Eq)

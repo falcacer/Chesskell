@@ -2,7 +2,6 @@ module PrettyPrint where
 
 import Common
 import Utils
-import Data.List (find)
 
 pieceToUnicode :: Piece -> String
 pieceToUnicode piece = extractChessPiece piece toUnicode
@@ -27,10 +26,6 @@ printSquare pos pieces =
         Nothing -> "."
         Just piece -> pieceToUnicode piece
 
--- Find piece at position using the extractChessPiece function
-getPieceAtPosition :: Position -> [Piece] -> Maybe Piece
-getPieceAtPosition targetPos pieces = 
-    find (\piece -> extractChessPiece piece (\p -> piecePosition p) == targetPos) pieces
 
 displayGame :: GameState -> String
 displayGame state =

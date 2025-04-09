@@ -19,6 +19,7 @@ import Data.Char (isDigit, digitToInt)
   '>' { TArrow }
   'x' { TCapture }
   ';' { TSemicolon }
+  '=' { TEqual }
   EOF { TEOF }
 %%
 
@@ -39,6 +40,12 @@ move : piece '-' position '>' position {
           let piece = charToPiece $1 $3
           in Move piece Capture $5 
       }
+     | piece '-' position '=' piece { 
+          let 
+              pawn = charToPiece $1 $3
+              promotionPiece = pieceNameToPromotionPiece $5
+          in Move pawn (Promotion promotionPiece) $3
+        }
 
 position :: { Position }
 position : col row { Pos $1 (digitToInt $2) }
@@ -76,6 +83,7 @@ data Token = TPiece Char
            | TArrow
            | TCapture
            | TSemicolon
+           | TEqual
            | TEOF
            deriving (Show)
 
@@ -91,10 +99,11 @@ lexer cs = let tokens = lexer' cs in tokens ++ [TEOF]
     lexer' ('>':cs) = TArrow : lexer' cs
     lexer' ('x':cs) = TCapture : lexer' cs
     lexer' (';':cs) = TSemicolon : lexer' cs
+    lexer' ('=':cs) = TEqual : lexer' cs
     lexer' (c:cs)
         | c `elem` ['1'..'8'] = TRow c : lexer' cs
         | c `elem` ['a'..'h'] = TCol c : lexer' cs
-        | c `elem` ['K', 'Q', 'R', 'B', 'N', 'P', 'k', 'q', 'r', 'b', 'n', 'p'] = TPiece c : lexer' cs
+        | c `elem` ['K', 'Q', 'R', 'S', 'N', 'P', 'k', 'q', 'r', 's', 'n', 'p'] = TPiece c : lexer' cs
         | otherwise = error $ "Unexpected character: " ++ [c]
 
 }

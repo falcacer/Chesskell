@@ -2,6 +2,7 @@
 module Utils where
 
 import           Common
+import           Data.List (find)
 
 
 -------------------------------------------------------------------------------
@@ -41,16 +42,29 @@ charToPiece :: Char -> Position -> Piece
 charToPiece 'K' p = Piece (King Black p)
 charToPiece 'Q' p = Piece (Queen Black p)
 charToPiece 'R' p = Piece (Rook Black p)
-charToPiece 'B' p = Piece (Bishop Black p)
+charToPiece 'S' p = Piece (Bishop Black p)
 charToPiece 'N' p = Piece (Knight Black p)
 charToPiece 'P' p = Piece (Pawn Black p)
 charToPiece 'k' p = Piece (King White p)
 charToPiece 'q' p = Piece (Queen White p)
 charToPiece 'r' p = Piece (Rook White p)
-charToPiece 'b' p = Piece (Bishop White p)
+charToPiece 's' p = Piece (Bishop White p)
 charToPiece 'n' p = Piece (Knight White p)
 charToPiece 'p' p = Piece (Pawn White p)
 charToPiece c   _ = error $ "Invalid piece: " ++ [c]
 
+
+pieceNameToPromotionPiece :: Char -> PromotionPiece
+pieceNameToPromotionPiece 'Q' = PromoteToQueen
+pieceNameToPromotionPiece 'R' = PromoteToRook
+pieceNameToPromotionPiece 'S' = PromoteToBishop
+pieceNameToPromotionPiece 'N' = PromoteToKnight
+pieceNameToPromotionPiece _ = PromoteToQueen
+
 extractChessPiece :: Piece -> (forall p. ChessPiece p => p -> a) -> a
 extractChessPiece (Piece p) f = f p
+
+
+getPieceAtPosition :: Position -> [Piece] -> Maybe Piece
+getPieceAtPosition targetPos pieces = 
+    find (\piece -> extractChessPiece piece (\p -> piecePosition p) == targetPos) pieces
