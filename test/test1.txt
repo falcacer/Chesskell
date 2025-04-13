@@ -1,1 +1,0 @@
-p-a2>a4;P-a7>a5;p-b2>b4;P-h7>h6;pxb4>a5;R-a8>a6;p-c2>c3;R-a6>e6;p-a5>a6;Rxe6>e2;p-a6>a7;Rxe2>f2;p-a7>a8;Rxf2>f1;p-a8=S

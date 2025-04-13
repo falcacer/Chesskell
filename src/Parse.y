@@ -23,7 +23,7 @@ import Data.Char (isDigit, digitToInt)
   EOF { TEOF }
 %%
 
--- Add a top-level rule to handle the entire input
+
 game :: { Moves }
 game : move_sequence EOF { $1 }
 

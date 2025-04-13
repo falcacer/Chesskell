@@ -1,31 +1,35 @@
+{-# OPTIONS_GHC -Wno-missing-export-lists #-}
 {-# LANGUAGE ExistentialQuantification #-}
 
 module Common where
 
+
 -------------------------------------------------------------------------------
+
 data Position = Pos Char Int deriving (Show, Eq, Ord)
 data Color = White | Black deriving (Show, Eq)
 
+
 class ChessPiece p where
-    move :: p -> Position ->  Bool
-    capture :: p -> Position -> Bool
-    pathIsClear :: p -> Position -> Bool
-    toUnicode :: p -> String
-    pieceName :: p -> String
-    pieceColor :: p -> Color
+    pieceName     :: p -> String
+    pieceColor    :: p -> Color
     piecePosition :: p -> Position
+    moveRule      :: p -> Position -> Bool
+    captureRule   :: p -> Position -> Bool
+    isClearPath   :: p -> Position -> [Piece] -> Bool
+    toUnicode     :: p -> String
+
 
 data King = King Color Position deriving (Show, Eq)
 instance ChessPiece King where
-    move (King _ (Pos c1 r1)) (Pos c2 r2) = 
-        let 
-            dx = abs (fromEnum c2 - fromEnum c1)
+    moveRule (King _ (Pos c1 r1)) (Pos c2 r2) = 
+        let dx = abs (fromEnum c2 - fromEnum c1)
             dy = abs (r2 - r1)
-        in max dx dy == 1
+        in  max dx dy == 1
     
-    capture = move
+    captureRule = moveRule
     
-    pathIsClear _ _ = True
+    isClearPath _ _ _ = True
 
     toUnicode (King Black _) = "♔"
     toUnicode (King White _) = "♚"
@@ -39,16 +43,28 @@ instance ChessPiece King where
 
 data Queen = Queen Color Position deriving (Show, Eq)
 instance ChessPiece Queen where
-    move (Queen _ (Pos c1 r1)) (Pos c2 r2) = 
-        let
-            dx = abs (fromEnum c2 - fromEnum c1)
+    moveRule (Queen _ (Pos c1 r1)) (Pos c2 r2) = 
+        let dx = abs (fromEnum c2 - fromEnum c1)
             dy = abs (r2 - r1)
-        in dx == dy || dx == 0 || dy == 0
+        in  dx == dy || dx == 0 || dy == 0
     
-    capture = move
+    captureRule = moveRule
     
-    pathIsClear _ _ =  True
-    
+    isClearPath (Queen _ (Pos c1 r1)) (Pos c2 r2) boardPieces = 
+        let c1Int = fromEnum c1
+            c2Int = fromEnum c2
+            dx = abs (c2Int - c1Int)
+            dy = abs (r2 - r1)
+            
+            stepX = if dx == 0 then 0 else (c2Int - c1Int) `div` dx
+            stepY = if dy == 0 then 0 else (r2 - r1) `div` dy
+            
+            path = [Pos (toEnum (c1Int + i * stepX)) (r1 + i * stepY) | 
+                   i <- [1..(max dx dy)-1]]
+                   
+            isPieceAt pos = any (\(Piece p) -> piecePosition p == pos) boardPieces
+        in  not $ any isPieceAt path
+        
     toUnicode (Queen Black _) = "♕"
     toUnicode (Queen White _) = "♛"
     
@@ -61,15 +77,23 @@ instance ChessPiece Queen where
 
 data Rook = Rook Color Position deriving (Show, Eq)
 instance ChessPiece Rook where
-    move (Rook _ (Pos c1 r1)) (Pos c2 r2) = 
-        let
-            dx = abs (fromEnum c2 - fromEnum c1)
+    moveRule (Rook _ (Pos c1 r1)) (Pos c2 r2) = 
+        let dx = abs (fromEnum c2 - fromEnum c1)
             dy = abs (r2 - r1)
-        in dx == 0 || dy == 0
+        in  dx == 0 || dy == 0
 
-    capture = move
+    captureRule = moveRule
         
-    pathIsClear _ _ =  True
+    isClearPath (Rook _ (Pos c1 r1)) (Pos c2 r2) boardPieces = 
+        let c1Int = fromEnum c1
+            c2Int = fromEnum c2
+            
+            path = if r1 == r2
+                then [Pos (toEnum c) r1 | c <- [(min c1Int c2Int + 1)..(max c1Int c2Int - 1)]]
+                else [Pos c1 r | r <- [(min r1 r2 + 1)..(max r1 r2 - 1)]]
+
+            isPieceAt pos = any (\(Piece p) -> piecePosition p == pos) boardPieces
+        in  not $ any isPieceAt path
 
     toUnicode (Rook Black _) = "♖"
     toUnicode (Rook White _) = "♜"
@@ -80,17 +104,30 @@ instance ChessPiece Rook where
 
     piecePosition (Rook _ pos) = pos
 
+
 data Bishop = Bishop Color Position deriving (Show, Eq)
 instance ChessPiece Bishop where
-    move (Bishop _ (Pos c1 r1)) (Pos c2 r2) = 
-        let
-            dx = abs (fromEnum c2 - fromEnum c1)
+    moveRule (Bishop _ (Pos c1 r1)) (Pos c2 r2) = 
+        let dx = abs (fromEnum c2 - fromEnum c1)
             dy = abs (r2 - r1)
-        in dx == dy
+        in  dx == dy
     
-    capture = move
+    captureRule = moveRule
         
-    pathIsClear _ _ =  True
+    isClearPath (Bishop _ (Pos c1 r1)) (Pos c2 r2) boardPieces = 
+        let c1Int = fromEnum c1
+            c2Int = fromEnum c2
+            
+            stepX = signum (c2Int - c1Int)
+            stepY = signum (r2 - r1)
+
+            diagonalLength = abs (c2Int - c1Int) - 1
+            
+            path = [Pos (toEnum (c1Int + i * stepX)) (r1 + i * stepY) | 
+                   i <- [1..diagonalLength]]
+                   
+            isPieceAt pos = any (\(Piece p) -> piecePosition p == pos) boardPieces
+        in  not $ any isPieceAt path
     
     toUnicode (Bishop Black _) = "♗"
     toUnicode (Bishop White _) = "♝"
@@ -104,15 +141,14 @@ instance ChessPiece Bishop where
 
 data Knight = Knight Color Position deriving (Show, Eq)
 instance ChessPiece Knight where
-    move (Knight _ (Pos c1 r1)) (Pos c2 r2) =
-        let
-            dx = abs (fromEnum c2 - fromEnum c1)
+    moveRule (Knight _ (Pos c1 r1)) (Pos c2 r2) =
+        let dx = abs (fromEnum c2 - fromEnum c1)
             dy = abs (r2 - r1)
-        in (dx == 2 && dy == 1) || (dx == 1 && dy == 2)
+        in  (dx == 2 && dy == 1) || (dx == 1 && dy == 2)
 
-    capture = move
+    captureRule = moveRule
     
-    pathIsClear _ _ =  True
+    isClearPath _ _ _ = True
     
     toUnicode (Knight Black _) = "♘"
     toUnicode (Knight White _) = "♞"
@@ -126,23 +162,28 @@ instance ChessPiece Knight where
 
 data Pawn = Pawn Color Position deriving (Show, Eq)
 instance ChessPiece Pawn where
-    move (Pawn color (Pos c1 r1)) (Pos c2 r2) =
-        let
-            dx = fromEnum c2 - fromEnum c1
+    moveRule (Pawn color (Pos c1 r1)) (Pos c2 r2) =
+        let dx = fromEnum c2 - fromEnum c1
             dy = r2 - r1
-        in if color == White
-           then dx == 0 && (dy == 1 || (dy == 2 && r1 == 2))
-           else dx == 0 && (dy == -1 || (dy == -2 && r1 == 7))
+        in  if color == White
+            then dx == 0 && (dy == 1 || (dy == 2 && r1 == 2))
+            else dx == 0 && (dy == -1 || (dy == -2 && r1 == 7))
 
-    capture (Pawn color (Pos c1 r1)) (Pos c2 r2) =
-        let
-            dx = abs (fromEnum c2 - fromEnum c1)
+    captureRule (Pawn color (Pos c1 r1)) (Pos c2 r2) =
+        let dx = abs (fromEnum c2 - fromEnum c1)
             dy = r2 - r1
-        in if color == White
-           then dx == 1 && dy == 1
-           else dx == 1 && dy == -1
+        in  if color == White
+            then dx == 1 && dy == 1
+            else dx == 1 && dy == -1
     
-    pathIsClear _ _ =  True
+    isClearPath (Pawn color (Pos c1 r1)) (Pos _ r2) boardPieces =
+        if abs (r2 - r1) == 1
+        then True
+        else 
+            let intermediateRow = if color == White then r1 + 1 else r1 - 1
+                intermediatePos = Pos c1 intermediateRow
+                isPieceAt pos = any (\(Piece p) -> piecePosition p == pos) boardPieces
+            in not (isPieceAt intermediatePos)
         
     toUnicode (Pawn Black _) = "♙"
     toUnicode (Pawn White _) = "♟"
@@ -160,18 +201,19 @@ instance Eq Piece where
     (Piece p1) == (Piece p2) = show p1 == show p2
 
 instance Show Piece where
-    show (Piece p) = pieceName p ++ " (" ++ show (pieceColor p) ++ "," ++ show (piecePosition p) ++ ")"
+    show (Piece p) = pieceName p ++ " (" ++ show (pieceColor p) ++ "," ++ 
+                    show (piecePosition p) ++ ")"
 
 
 data CastleType = KingSide | QueenSide deriving (Show, Eq)
 
 data PromotionPiece = PromoteToQueen | PromoteToRook | PromoteToBishop | PromoteToKnight
-    deriving (Show, Eq)
+                    deriving (Show, Eq)
 
 data MoveType = Normal 
-                | Capture
-                | Promotion PromotionPiece
-                deriving (Show, Eq)
+              | Capture
+              | Promotion PromotionPiece
+              deriving (Show, Eq)
 
 data Move = Move Piece MoveType Position deriving (Show, Eq)
 
@@ -180,10 +222,10 @@ type Moves = [Move]
 data GameResult = WhiteWin | BlackWin | Draw deriving (Show, Eq)
 
 data GameState = GameState {
-    board :: [Piece], 
-    currentPlayer :: Color,
-    moveHistory :: [Move],
+    board          :: [Piece],
+    currentPlayer  :: Color,
+    moveHistory    :: [Move],
     capturedPieces :: [Piece],
-    inCheck :: Bool,
-    gameResult :: Maybe GameResult
+    inCheck        :: Bool,
+    gameResult     :: Maybe GameResult
 } deriving (Show, Eq)

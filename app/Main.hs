@@ -1,51 +1,46 @@
+{-# OPTIONS_GHC -Wno-missing-export-lists #-}
+
 module Main where
 
 import           Parse 
-import           Utils                       
+import           Utils
 import           Common
 import           Eval
 import           Monads
 import           PrettyPrint
 import           System.Environment (getArgs)
-import           System.IO (readFile)
 
 -------------------------------------------------------------------------------
 
--- Helper function to display test results
-assertTest :: String -> Bool -> IO ()
-assertTest desc success = putStrLn $ if success then "✓ " ++ desc else "✗ " ++ desc
+processMovesOneByOne :: [Move] -> GameState -> IO GameState
+processMovesOneByOne [] currentState = return currentState
+processMovesOneByOne (move:moves) currentState = do
+    case runGame (makeMove move) currentState of
+        Right (_, newState) -> processMovesOneByOne moves newState
+        Left err -> do
+            putStrLn $ "Error en el movimiento: " ++ show move
+            putStrLn $ "Detalle del error: " ++ show err
+            return currentState
 
--- Process moves from a string input
 processMoveString :: String -> IO ()
 processMoveString input = do
-    putStrLn "Processing moves from input"
     putStrLn $ "Input: " ++ input
     
-    -- Parse the input string
     case lexer input of
         tokens -> case parse tokens of
             Ok moves -> do
                 putStrLn $ "Parsed " ++ show (length moves) ++ " moves: " ++ show moves
                 
-                -- Evaluate the moves
-                let result = runChess (evalMoves moves) initialGameState
+                putStrLn "Initial board:"
+                putStrLn $ printBoard initialGameState
                 
-                case result of
-                    Just (success, finalState) -> do
-                        putStrLn "Initial board:"
-                        putStrLn $ printBoard initialGameState
-                        
-                        assertTest "All moves succeeded" success
-                        
-                        -- Display additional game information
-                        putStrLn $ displayGame finalState
-                        
-                    Nothing -> putStrLn "Move sequence processing failed unexpectedly"
+                finalState <- processMovesOneByOne moves initialGameState
+                
+                putStrLn "Final state (last valid position):"
+                putStrLn $ displayGame finalState
                     
             Failed err -> putStrLn $ "Parse error: " ++ err
 
-
--- Run the program with file input or default test
 main :: IO ()
 main = do
     putStrLn "Cheskell - Haskell Chess Engine"

@@ -1,7 +1,12 @@
+{-# OPTIONS_GHC -Wno-missing-export-lists #-}
+
 module PrettyPrint where
 
 import Common
 import Utils
+
+
+-------------------------------------------------------------------------------
 
 pieceToUnicode :: Piece -> String
 pieceToUnicode piece = extractChessPiece piece toUnicode
@@ -33,9 +38,14 @@ displayGame state =
     printBoard state ++ "\n" ++
     "Captured pieces: " ++ printCapturedPieces (capturedPieces state) ++ "\n" ++
     "Move history: " ++ show (length (moveHistory state)) ++ " moves\n" ++
+    (if inCheck state 
+        then show (oppositeColor (currentPlayer state)) ++ " is in CHECK!\n" 
+        else "") ++
     case gameResult state of
         Nothing -> "Game in progress"
         Just result -> "Game over: " ++ show result
+        
+
 
 printCapturedPieces :: [Piece] -> String
 printCapturedPieces [] = "None"
