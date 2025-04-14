@@ -14,7 +14,6 @@ data ChessError =
     | MoveIntoCheck Piece Position
     | SelfCapture Piece Position
     | GameOver GameResult
-    | RuleViolation String
     deriving (Show, Eq)
 
 newtype ChessState a = ChessState { runChess :: GameState -> Either ChessError (a, GameState) }
@@ -69,3 +68,12 @@ wrongTurnError piece color = throwError $ WrongTurn piece color
 
 moveIntoCheckError :: Piece -> Position -> ChessState a
 moveIntoCheckError piece pos = throwError $ MoveIntoCheck piece pos
+
+selfCaptureError :: Piece -> Position -> ChessState a
+selfCaptureError piece pos = throwError $ SelfCapture piece pos
+
+pieceNotFoundError :: Position -> ChessState a
+pieceNotFoundError pos = throwError $ PieceNotFound pos
+
+gameOverError :: GameResult -> ChessState a
+gameOverError result = throwError $ GameOver result

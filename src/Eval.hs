@@ -58,7 +58,7 @@ normal move@(Move piece _ target) = do
     state <- getState
     
     case getPieceAtPosition target (board state) of
-        Just _ -> throwError $ SelfCapture piece target
+        Just _ -> selfCaptureError piece target
         Nothing -> do
             let piece_color = extractChessPiece piece pieceColor
                 new_pos_piece = updatePiecePosition target piece
@@ -66,7 +66,7 @@ normal move@(Move piece _ target) = do
                 new_state = state { board = new_board }
 
             if isKingInCheck piece_color new_state
-                then throwError $ MoveIntoCheck piece target
+                then moveIntoCheckError piece target
                 else do
                     let next_player = oppositeColor piece_color
                     modifyState (\s -> s {
@@ -84,19 +84,19 @@ capture move@(Move piece _ target) = do
     _ <- isClearPathM piece target
     
     case getPieceAtPosition target (board state) of 
-        Nothing -> throwError $ PieceNotFound target
+        Nothing -> pieceNotFoundError target
         Just target_piece -> do 
             let target_color = extractChessPiece target_piece pieceColor  
                 piece_color = extractChessPiece piece pieceColor           
             if target_color == piece_color
-                then throwError $ SelfCapture piece target
+                then selfCaptureError piece target
                 else do
                     let new_pos = updatePiecePosition target piece
                         new_board = new_pos : delete piece (delete target_piece (board state))
                         new_state = state { board = new_board }
 
                     if isKingInCheck piece_color new_state
-                        then throwError $ MoveIntoCheck piece target
+                        then moveIntoCheckError piece target
                         else do
                             let next_player = oppositeColor piece_color
                             modifyState $ \s -> s
@@ -114,11 +114,11 @@ makeMove move@(Move piece moveType _) = do
     state <- getState
 
     case gameResult state of
-        Just result -> throwError $ GameOver result
+        Just result -> gameOverError result
         Nothing -> return ()
 
     if not (elem piece (board state))
-        then throwError $ PieceNotFound (extractChessPiece piece piecePosition)
+        then pieceNotFoundError (extractChessPiece piece piecePosition)
         else do
             _ <- colorMatch piece
 
