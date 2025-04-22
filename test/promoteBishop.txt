@@ -1,1 +1,0 @@
-p-e2>e4; P-d7>d5; pxe4>d5; P-c7>c6; p-d5>d6; P-b7>b5; n-b1>c3; N-b8>a6; n-g1>f3; N-g8>f6; p-d2>d4; P-h7>h6; s-c1>g5; Pxh6>g5; p-d6>d7; Q-d8>c7; p-d7>d8; Rxh8>h2; p-d8=S
